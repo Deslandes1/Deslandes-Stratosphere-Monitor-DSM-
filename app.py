@@ -6,183 +6,135 @@ from math import radians, sin, cos, sqrt, atan2, pi, asin, degrees
 import time
 from datetime import datetime
 
-# --- CONFIGURATION & SESSION STATE ---
-st.set_page_config(
-    page_title="DSM - Deslandes Stratosphere Monitor", 
-    layout="wide", 
-    page_icon="🔴"
-)
+# --- 1. SESSION STATE & CONFIG ---
+st.set_page_config(page_title="DSM - Deslandes Stratosphere Monitor", layout="wide", page_icon="🇭🇹")
 
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
 if 'language' not in st.session_state:
     st.session_state.language = 'en'
 
-# --- MULTILINGUAL DICTIONARY ---
+# --- 2. AUTHENTICATION SYSTEM ---
+def check_password():
+    def password_entered():
+        if st.session_state["password"] == "20082010":
+            st.session_state["authenticated"] = True
+            del st.session_state["password"]
+        else:
+            st.error("❌ Access Denied: Incorrect Password")
+
+    if not st.session_state["authenticated"]:
+        # Presentation Page with Haitian Flag
+        st.markdown("<h1 style='text-align: center;'>🇭🇹</h1>", unsafe_allow_html=True)
+        st.markdown("""
+            <div style='height: 100px; background-color: #00209F; border-radius: 10px 10px 0 0;'></div>
+            <div style='height: 100px; background-color: #D21034; border-radius: 0 0 10px 10px;'></div>
+            <br>
+            <h2 style='text-align: center;'>Deslandes Stratosphere Monitor</h2>
+            <p style='text-align: center;'>Licensed Software by GlobaLInternet.py</p>
+        """, unsafe_allow_html=True)
+        
+        st.text_input("Enter Access Key to Unlock DSM System", type="password", on_change=password_entered, key="password")
+        st.stop()
+
+check_password()
+
+# --- 3. BRANDING & LICENSE ---
+LICENSE_TEXT = """
+© 2026 GlobaLInternet.py | ALL RIGHTS RESERVED
+Owner: Gesner Deslandes
+Phone: (509)-4738-5663 | Email: deslandes78@gmail.com
+MADE IN HAITI
+"""
+
 TRANSLATIONS = {
     'en': {
         'title': '🔴 DSM: DESLANDES STRATOSPHERE MONITOR',
-        'm1': '✈️ Aircraft Radar', 
-        'm2': '🛰️ Satellite Tracker', 
-        'm3': '🚀 Missile Detector',
-        'threat_header': '⚠️ TACTICAL THREAT ALERT',
-        'speed': 'Velocity', 
-        'target': 'Predicted Impact Zone',
-        'report': '📥 Download Intelligence Report',
-        'owner': '🇭🇹 Owner: Gesner Deslandes – Licensed Software',
-        'status': 'System Status: ACTIVE SCANNING',
-        'radar_label': '📡 STRATOSPHERIC SWEEP'
+        'm1': '✈️ Aircraft Radar', 'm2': '🛰️ Satellite Tracker', 'm3': '🚀 Missile Detector',
+        'threat': '⚠️ THREAT DETECTED', 'demo': '📡 CACHE/DEMO MODE ACTIVE',
+        'report': '📥 Download Intelligence Report', 'owner': '🇭🇹 Made in Haiti by GlobaLInternet.py'
     },
     'fr': {
         'title': '🔴 DSM: MONITORING STRATOSPHÉRIQUE',
-        'm1': '✈️ Radar Aéronefs', 
-        'm2': '🛰️ Traqueur Satellites', 
-        'm3': '🚀 Détecteur de Missiles',
-        'threat_header': '⚠️ ALERTE DE MENACE TACTIQUE',
-        'speed': 'Vitesse', 
-        'target': 'Zone d\'Impact Prédite',
-        'report': '📥 Télécharger le rapport de renseignement',
-        'owner': '🇭🇹 Propriétaire: Gesner Deslandes – Logiciel Sous Licence',
-        'status': 'État du système: BALAYAGE ACTIF',
-        'radar_label': '📡 BALAYAGE STRATOSPHÉRIQUE'
+        'm1': '✈️ Radar Aéronefs', 'm2': '🛰️ Traqueur Satellites', 'm3': '🚀 Détecteur de Missiles',
+        'threat': '⚠️ MENACE DÉTECTÉE', 'demo': '📡 MODE DÉMO/CACHE ACTIF',
+        'report': '📥 Télécharger le rapport', 'owner': '🇭🇹 Fait en Haïti par GlobaLInternet.py'
     },
     'ht': {
         'title': '🔴 DSM: RADAR SIVEYANS GLOBAL',
-        'm1': '✈️ Radar Avyon', 
-        'm2': '🛰️ Swiv Satelit', 
-        'm3': '🚀 Detektè Misil',
-        'threat_header': '⚠️ MENAS DETEKTE',
-        'speed': 'Vitès', 
-        'target': 'Zòn Enpak Estimé',
-        'report': '📥 Telechaje Rapò Entelijans la',
-        'owner': '🇭🇹 Pwopriyetè: Gesner Deslandes – Lisansye',
-        'status': 'Sistèm: AP SCANNE KONFYA',
-        'radar_label': '📡 VIZUALIZASYON RADAR'
+        'm1': '✈️ Radar Avyon', 'm2': '🛰️ Swiv Satelit', 'm3': '🚀 Detektè Misil',
+        'threat': '⚠️ MENAS DETEKTE', 'demo': '📡 MÒD DEMO AKTIF',
+        'report': '📥 Telechaje Rapò a', 'owner': '🇭🇹 Fèt an Ayiti pa GlobaLInternet.py'
     }
 }
 
 def t(key):
-    lang = st.session_state.language
-    return TRANSLATIONS.get(lang, TRANSLATIONS['en']).get(key, key)
+    return TRANSLATIONS[st.session_state.language].get(key, key)
 
-# --- TACTICAL MATH ENGINE ---
-def calculate_impact(lat, lon, dist_km, brng_deg):
-    R = 6371
-    lat1, lon1, brng = radians(lat), radians(lon), radians(brng_deg)
-    d = dist_km / R
-    lat2 = asin(sin(lat1)*cos(d) + cos(lat1)*sin(d)*cos(brng))
-    lon2 = lon1 + atan2(sin(brng)*sin(d)*cos(lat1), cos(d)-sin(lat1)*sin(lat2))
-    return degrees(lat2), degrees(lon2)
+# --- 4. DATA ENGINE (LIVE + CACHED DEMO) ---
+@st.cache_data(ttl=60)
+def get_cached_threats(mode):
+    # Simulated/Cached objects for Demo Mode
+    if mode == "Missile":
+        return [{"id": "DEMO-MSL-1", "r": 1400, "th": 45, "s": 6500}, {"id": "DEMO-MSL-2", "r": 2200, "th": 190, "s": 9200}]
+    elif mode == "Aircraft":
+        return [{"id": "DEMO-FLIGHT-X", "r": 800, "th": 120, "s": 850}]
+    else: # Satellites
+        return [{"id": "DEMO-SAT-Z", "r": 2800, "th": 330, "s": 27000}]
 
-# --- SIDEBAR CONTROL ---
-st.sidebar.title("DSM Control Center")
-st.sidebar.markdown(f"**{t('owner')}**")
-lang_select = st.sidebar.selectbox("Language / Langue", ["English", "Français", "Kreyòl"])
-st.session_state.language = {'English': 'en', 'Français': 'fr', 'Kreyòl': 'ht'}[lang_select]
+# --- 5. MAIN INTERFACE ---
+st.sidebar.title("DSM Control")
+st.sidebar.info(LICENSE_TEXT)
+lang = st.sidebar.selectbox("Language", ["English", "Français", "Kreyòl"])
+st.session_state.language = {'English': 'en', 'Français': 'fr', 'Kreyòl': 'ht'}[lang]
 
-# Custom CSS for the "Military/Tactical" look
-st.markdown("""
-    <style>
-    .main { background-color: #050505; }
-    .stMetric { color: #00FF41 !important; }
-    div[data-testid="stExpander"] { border: 1px solid #00FF41; background-color: #001100; }
-    </style>
-    """, unsafe_allow_html=True)
+if st.sidebar.button("Logout / Lock System"):
+    st.session_state.authenticated = False
+    st.rerun()
 
 st.title(t('title'))
 mode = st.radio("", [t('m1'), t('m2'), t('m3')], horizontal=True, index=2)
 
-# --- MAIN MODE: MISSILE DETECTOR ---
-if mode == t('m3'):
-    col_radar, col_intel = st.columns([2, 1])
+# Logic mapping
+if mode == t('m1'): active_mode, label = "Aircraft", "ALTITUDE MONITOR"
+elif mode == t('m2'): active_mode, label = "Satellite", "ORBITAL SWEEP"
+else: active_mode, label = "Missile", "TACTICAL DEFENSE"
+
+# Display Logic
+col1, col2 = st.columns([2, 1])
+objects = get_cached_threats(active_mode)
+r_max = 3000
+
+with col1:
+    st.subheader(f"📡 {label} ({t('demo')})")
+    fig = go.Figure()
+    # Rotating Dual Needle Animation
+    sweep = (time.time() * 90) % 360
+    for offset in [0, 180]:
+        fig.add_trace(go.Scatterpolar(r=[0, r_max], theta=[(sweep + offset) % 360]*2,
+                                     mode='lines', line=dict(color='#00FF41', width=4), opacity=0.6, showlegend=False))
+    # Plot Detected Objects
+    fig.add_trace(go.Scatterpolar(
+        r=[o['r'] for o in objects], theta=[o['th'] for o in objects],
+        mode='markers+text', marker=dict(size=15, color='red', symbol='cross'),
+        text=[o['id'] for o in objects], textposition="top right"
+    ))
+    fig.update_layout(polar=dict(bgcolor="black", radialaxis=dict(gridcolor="#004400", color="lime"),
+                                angularaxis=dict(gridcolor="#004400", color="lime")),
+                      paper_bgcolor="black", font_color="lime", height=700)
+    st.plotly_chart(fig, use_container_width=True)
+
+with col2:
+    st.warning(t('threat'))
+    report = f"DSM Report - {active_mode}\nResearcher: Gesner Deslandes\n"
+    for o in objects:
+        with st.container(border=True):
+            st.write(f"**Target ID:** {o['id']}")
+            st.write(f"**Speed:** {o['s']} km/h")
+            report += f"ID: {o['id']} | Speed: {o['s']}\n"
     
-    # Coordinates for Port-au-Prince focus
-    HOME_LAT, HOME_LON, SCAN_RADIUS = 18.5392, -72.3350, 3000
-    
-    # Mock detection data for the researcher interface
-    threats = [
-        {"id": "V-ALPHA-9", "type": "Hypersonic Glide Vehicle", "dist": 1240, "brng": 32, "speed": 8500},
-        {"id": "V-OMEGA-4", "type": "Ballistic ICBM", "dist": 2450, "brng": 210, "speed": 12000}
-    ]
+    st.download_button(t('report'), report, file_name=f"DSM_{active_mode}_Report.txt")
 
-    with col_radar:
-        st.subheader(t('radar_label'))
-        fig = go.Figure()
-        
-        # Dual-Needle Sweep Animation (Updates on rerun)
-        now = time.time()
-        sweep_1 = (now * 110) % 360
-        sweep_2 = (sweep_1 + 180) % 360
-        
-        for s_angle in [sweep_1, sweep_2]:
-            fig.add_trace(go.Scatterpolar(
-                r=[0, SCAN_RADIUS], theta=[s_angle, s_angle],
-                mode='lines', line=dict(color='#00FF41', width=4), opacity=0.7, showlegend=False
-            ))
-        
-        # Plot Radar Targets
-        fig.add_trace(go.Scatterpolar(
-            r=[m['dist'] for m in threats], 
-            theta=[m['brng'] for m in threats],
-            mode='markers+text', 
-            marker=dict(size=18, color='red', symbol='triangle-up', line=dict(color='white', width=1)),
-            text=[f"!! {m['id']} !!" for m in threats],
-            textfont=dict(color="red", size=12), 
-            textposition="top center",
-            name="HIGH VELOCITY THREAT"
-        ))
-
-        fig.update_layout(
-            polar=dict(
-                bgcolor="black", 
-                radialaxis=dict(gridcolor="#004400", color="#00FF41", range=[0, SCAN_RADIUS]),
-                angularaxis=dict(gridcolor="#004400", color="#00FF41")
-            ),
-            paper_bgcolor="black", 
-            font_color="#00FF41", 
-            height=800, 
-            margin=dict(t=20, b=20)
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    with col_intel:
-        st.error(t('threat_header'))
-        st.caption(t('status'))
-        
-        intel_report = f"DSM STRATOSPHERIC INTELLIGENCE REPORT\nGENERATED: {datetime.now()}\nRESEARCHER: GESNER DESLANDES\n" + "="*40 + "\n"
-        
-        for m in threats:
-            # Calculate impact relative to detection point
-            i_lat, i_lon = calculate_impact(HOME_LAT, HOME_LON, m['dist']*0.12, m['brng'])
-            
-            with st.expander(f"🔴 TARGET ID: {m['id']}", expanded=True):
-                st.write(f"**Class:** {m['type']}")
-                st.write(f"**{t('speed')}:** {m['speed']} km/h (Mach {round(m['speed']/1234, 1)})")
-                st.write(f"**{t('target')}:** `{i_lat:.4f}, {i_lon:.4f}`")
-                st.progress(0.85) # Threat level
-                
-            intel_report += f"\n[TARGET: {m['id']}]\nType: {m['type']}\nVelocity: {m['speed']} km/h\nEst. Impact: {i_lat}, {i_lon}\n"
-        
-        st.divider()
-        st.download_button(
-            label=t('report'), 
-            data=intel_report, 
-            file_name=f"DSM_INTEL_{datetime.now().strftime('%Y%m%d_%H%M')}.txt", 
-            mime="text/plain"
-        )
-
-    # Automatic Refresh for Radar Animation
-    time.sleep(1)
-    st.rerun()
-
-# --- PLACEHOLDERS FOR AIRCRAFT & SATELLITE ---
-elif mode == t('m1'):
-    st.info(f"{t('m1')} - Global Airspace Feed")
-    st.warning("Secure API Connection Required. Please configure OpenSky/FlightRadar24 keys in GitHub Secrets.")
-    st.write("Aircraft tracking is temporarily paused to prioritize Tactical Missile Defense (Mode 3).")
-
-elif mode == t('m2'):
-    st.info(f"{t('m2')} - Orbital Tracking Feed")
-    st.warning("TLE Data Stream Pending. Please configure N2YO API keys in GitHub Secrets.")
-    st.write("Satellite ground tracks will appear here once the orbital engine is synced.")
-
-st.sidebar.markdown("---")
-st.sidebar.info("Deslandes Stratosphere Monitor (DSM) v3.0 - Global Surveillance Suite")
+st.caption(f"--- \n {t('owner')}")
+time.sleep(1)
+st.rerun()
