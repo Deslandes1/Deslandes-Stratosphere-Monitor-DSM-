@@ -26,119 +26,104 @@ def check_password():
     if not st.session_state["authenticated"]:
         st.markdown("<h1 style='text-align: center;'>🇭🇹</h1>", unsafe_allow_html=True)
         st.markdown("<h2 style='text-align: center;'>DESLANDES STRATOSPHERE MONITOR</h2>", unsafe_allow_html=True)
-        st.text_input("Enter Access Key to Unlock System", type="password", on_change=password_entered, key="password")
+        st.text_input("Enter Access Key", type="password", on_change=password_entered, key="password")
         st.stop()
 
 check_password()
 
-# --- 3. BRANDING & LICENSE ---
-OWNER_INFO = """
-**Developer:** GlobaLInternet.py  
-**Owner:** Gesner Deslandes  
-**Location:** 🇭🇹 Port-au-Prince, Haiti  
-**Contact:** (509)-4738-5663  
-*(Accepted: PRISME Transfer for Sales)* **Email:** deslandes78@gmail.com
-"""
-
-SOFTWARE_LICENSE = """
-### 📜 DSM PROPRIETARY LICENSE
-© 2026 GlobaLInternet.py. All Rights Reserved.
-Owner: Gesner Deslandes.
-Unauthorized distribution is prohibited.
-**MADE IN HAITI**
-"""
-
-# --- 4. MULTI-MODE DATA ENGINE ---
-def get_radar_data(mode, username, password):
-    """Unified engine for Aircraft, Satellite, and Missile detection."""
+# --- 3. DATA ENGINE ---
+def get_radar_data(mode, user, pw, lat, lon, r_max):
+    """Fetches or simulates data based on geo-location and range."""
     if mode == "Aircraft" and not st.session_state.get('demo_mode', True):
-        # REAL-TIME OPENSKY INTEGRATION
-        url = "https://opensky-network.org/api/states/all"
+        # OpenSky API Logic with Geo-Bounding Box
+        # Conversion: 1 degree lat is approx 111km
+        lat_delta = r_max / 111.0
+        lon_delta = r_max / (111.0 * np.cos(np.radians(lat)))
+        
+        url = f"https://opensky-network.org/api/states/all?lamin={lat-lat_delta}&lomin={lon-lon_delta}&lamax={lat+lat_delta}&lomax={lon+lon_delta}"
         try:
-            auth = (username, password) if username and password else None
+            auth = (user, pw) if user and pw else None
             response = requests.get(url, auth=auth, timeout=5)
             if response.status_code == 200:
-                states = response.json().get('states', [])[:15]
-                return [{"ID": s[1] or s[0], "Dist": np.random.randint(500, 2500), "Deg": np.random.randint(0, 360), "Spd": int(s[9]*3.6) if s[9] else 0, "Type": "Live Aircraft"} for s in states]
+                states = response.json().get('states', [])[:20]
+                return [{"ID": s[1] or s[0], "Dist": np.random.randint(5, r_max), "Deg": np.random.randint(0, 360), "Spd": int(s[9]*3.6) if s[9] else 0} for s in states]
         except: pass
-    
-    # SIMULATED / CACHED MODES (Satellites & Missiles)
-    if mode == "Satellite":
-        return [
-            {"ID": "ISS-CORE", "Dist": 2800, "Deg": (time.time()*5)%360, "Spd": 27600, "Type": "LEO Satellite"},
-            {"ID": "STARLINK-A1", "Dist": 2400, "Deg": (time.time()*8)%360, "Spd": 27000, "Type": "Communication"},
-            {"ID": "GPS-NAV-04", "Dist": 2900, "Deg": (time.time()*2)%360, "Spd": 14000, "Type": "Navigation"}
-        ]
-    elif mode == "Missile":
-        return [
-            {"ID": "T-BALLISTIC-1", "Dist": 1200, "Deg": 45, "Spd": 15000, "Type": "Hypersonic"},
-            {"ID": "T-CRUISE-X", "Dist": 800, "Deg": 310, "Spd": 950, "Type": "Subsonic"}
-        ]
-    else: # Demo Aircraft
-        return [{"ID": f"DEMO-FLT-{i}", "Dist": np.random.randint(400, 2800), "Deg": np.random.randint(0, 360), "Spd": 850, "Type": "Commercial"} for i in range(5)]
 
-# --- 5. SIDEBAR & SETTINGS ---
+    # Fallback/Simulation for Satellites & Missiles
+    count = 8 if mode == "Satellite" else 3
+    return [{"ID": f"TGT-{mode[:3]}-{i}", "Dist": np.random.randint(10, r_max), "Deg": np.random.randint(0, 360), "Spd": np.random.randint(800, 28000)} for i in range(count)]
+
+# --- 4. SIDEBAR (GEO & RANGE CONTROLS) ---
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/5/56/Flag_of_Haiti.svg", width=80)
-    st.title("DSM SETTINGS")
-    st.session_state.demo_mode = st.toggle("🛰️ Demo Mode", value=True)
+    st.title("🌐 GEOGRAPHIC CONTROL")
+    st.info("Set Radar Center & Detection Radius")
+    
+    # LAT/LON INPUTS
+    col_lat, col_lon = st.columns(2)
+    with col_lat:
+        user_lat = st.number_input("Latitude", value=18.53, format="%.4f", help="Haiti center: 18.53")
+    with col_lon:
+        user_lon = st.number_input("Longitude", value=-72.33, format="%.4f", help="Haiti center: -72.33")
+    
+    # MAX RANGE SLIDER
+    max_range = st.slider("Detection Range (km)", min_value=50, max_value=5000, value=1000, step=50)
     
     st.markdown("---")
-    st.subheader("Global Credentials")
+    st.session_state.demo_mode = st.toggle("🛰️ Demo Mode", value=True)
     os_user = st.text_input("OpenSky User")
     os_pass = st.text_input("OpenSky Pass", type="password")
     
     st.markdown("---")
-    st.markdown(OWNER_INFO)
+    st.markdown("**GlobaLInternet.py** / Owner: Gesner Deslandes")
+    st.markdown("Payment: (509)-4738-5663")
     if st.button("Lock System"):
         st.session_state.authenticated = False
         st.rerun()
 
-# --- 6. MAIN UI & MODE SELECTOR ---
-st.title("🔴 DSM: DESLANDES STRATOSPHERE MONITOR")
+# --- 5. MAIN INTERFACE ---
+st.title("🔴 DSM: STRATOSPHERE MONITOR")
 
-# Mode Selection (Functions for all 3 applications integrated)
-app_mode = st.radio("SELECT MONITORING DOMAIN", ["✈️ Aircraft Radar", "🛰️ Satellite Tracker", "🚀 Missile Detector"], horizontal=True)
-active_key = app_mode.split(" ")[1] # Extracts Aircraft, Satellite, or Missile
+app_mode = st.radio("SENSORS", ["✈️ Aircraft", "🛰️ Satellite", "🚀 Missile"], horizontal=True, label_visibility="collapsed")
+active_key = app_mode.split(" ")[1]
 
-objects = get_radar_data(active_key, os_user, os_pass)
+objects = get_radar_data(active_key, os_user, os_pass, user_lat, user_lon, max_range)
 
-col1, col2 = st.columns([2, 1])
+col_radar, col_data = st.columns([2, 1])
 
-with col1:
-    st.subheader(f"📡 Tactical Sweep: {app_mode}")
+with col_radar:
+    st.subheader(f"📡 Radar Center: {user_lat}, {user_lon} | Range: {max_range}km")
+    
     fig = go.Figure()
-    sweep = (time.time() * 90) % 360
+    sweep = (time.time() * 100) % 360
     
-    # Animated Radar Pulse
-    fig.add_trace(go.Scatterpolar(r=[0, 3000], theta=[sweep, sweep], mode='lines', line=dict(color='#00FF41', width=5), opacity=0.7, showlegend=False))
+    # Radar Sweep Line
+    fig.add_trace(go.Scatterpolar(r=[0, max_range], theta=[sweep, sweep], mode='lines', line=dict(color='#00FF41', width=5), showlegend=False))
     
-    # Plot Targets
+    # Plot Detected Targets
     fig.add_trace(go.Scatterpolar(
         r=[o['Dist'] for o in objects], theta=[o['Deg'] for o in objects],
-        mode='markers+text', marker=dict(size=14, color='red', symbol='cross'),
+        mode='markers+text', marker=dict(size=12, color='red', symbol='cross'),
         text=[o['ID'] for o in objects], textposition="top right"
     ))
 
     fig.update_layout(
-        polar=dict(bgcolor="black", radialaxis=dict(gridcolor="#004400", color="lime", range=[0, 3000]),
+        polar=dict(bgcolor="black", 
+                   radialaxis=dict(gridcolor="#004400", color="lime", range=[0, max_range], ticksuffix="km"),
                    angularaxis=dict(gridcolor="#004400", color="lime")),
-        paper_bgcolor="black", font_color="lime", height=650
+        paper_bgcolor="black", font_color="lime", height=700, margin=dict(l=40, r=40, t=40, b=40)
     )
     st.plotly_chart(fig, use_container_width=True)
 
-with col2:
-    st.warning("⚠️ TARGET ANALYSIS ACTIVE")
-    st.dataframe(pd.DataFrame(objects), hide_index=True)
+with col_data:
+    st.warning("⚠️ TARGET INTELLIGENCE")
+    df = pd.DataFrame(objects)
+    st.dataframe(df, hide_index=True, use_container_width=True)
     
     st.markdown("---")
-    st.info(SOFTWARE_LICENSE)
+    st.success("© 2026 GlobaLInternet.py\n\n**MADE IN HAITI**")
     
-    report_data = f"DSM SECURITY REPORT\nSource: GlobaLInternet.py\nDate: {datetime.now()}\nMode: {app_mode}\n"
-    st.download_button("📥 Export Intelligence", report_data, file_name=f"DSM_{active_key}_Report.txt")
-
-st.markdown("---")
-st.markdown("<h3 style='text-align: center;'>🇭🇹 MADE IN HAITI BY GLOBALINTERNET.PY</h3>", unsafe_allow_html=True)
+    report = f"DSM SECURITY REPORT\nCenter: {user_lat}, {user_lon}\nRange: {max_range}km\nTargets: {len(objects)}"
+    st.download_button("📥 Export Data", report, file_name=f"DSM_{active_key}_Report.txt")
 
 time.sleep(2)
 st.rerun()
