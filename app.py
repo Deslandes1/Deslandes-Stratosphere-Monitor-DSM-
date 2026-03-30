@@ -12,7 +12,7 @@ st.set_page_config(page_title="DSM - Deslandes Stratosphere Monitor", layout="wi
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
-# --- 2. AUTHENTICATION & OFFICIAL FLAG UI ---
+# --- 2. AUTHENTICATION & STABLE FLAG UI ---
 def check_password():
     def password_entered():
         if st.session_state["password"] == "20082010":
@@ -22,15 +22,16 @@ def check_password():
             st.error("❌ Access Denied")
 
     if not st.session_state["authenticated"]:
+        # FIX: Using a direct, stable render for the National Flag
         st.markdown("""
             <div style='text-align: center; margin-bottom: 20px;'>
-                <img src='https://upload.wikimedia.org/wikipedia/commons/f/f4/Flag_of_Haiti.svg' width='350' style='border-radius: 5px; box-shadow: 0px 10px 30px rgba(0,0,0,0.5);'>
+                <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Flag_of_Haiti.svg/1280px-Flag_of_Haiti.svg.png' width='400' style='border-radius: 5px; box-shadow: 0px 5px 20px rgba(0,0,0,0.6); border: 1px solid #333;'>
             </div>
-            <h1 style='text-align: center; color: #00FF41; font-family: monospace;'>SYSTEM LOCKED: DSM-2026</h1>
-            <p style='text-align: center; color: white;'>GlobaLInternet.py Security Protocol</p>
+            <h1 style='text-align: center; color: #00FF41; font-family: "Courier New", Courier, monospace;'>DSM-2026: SYSTEM ENCRYPTED</h1>
+            <p style='text-align: center; color: #888;'>GlobaLInternet.py Security Infrastructure</p>
         """, unsafe_allow_html=True)
         
-        st.text_input("ENTER ACCESS KEY", type="password", on_change=password_entered, key="password")
+        st.text_input("INPUT ACCESS KEY", type="password", on_change=password_entered, key="password")
         st.stop()
 
 check_password()
@@ -45,41 +46,47 @@ def get_radar_data(mode, user, pw, lat, lon, r_max):
             auth = (user, pw) if user and pw else None
             response = requests.get(url, auth=auth, timeout=5)
             if response.status_code == 200:
-                states = response.json().get('states', [])[:20]
+                states = response.json().get('states', [])[:25]
                 return [{"ID": s[1] or s[0], "Dist": np.random.randint(5, r_max), "Deg": np.random.randint(0, 360), "Spd": int(s[9]*3.6) if s[9] else 0} for s in states]
         except: pass
     
-    count = 15 if mode == "Satellite" else 6
-    return [{"ID": f"TGT-{mode[:3]}-{i}", "Dist": np.random.randint(10, r_max), "Deg": np.random.randint(0, 360), "Spd": np.random.randint(900, 28000)} for i in range(count)]
+    count = 18 if mode == "Satellite" else 7
+    return [{"ID": f"TGT-{mode[:3].upper()}-{i}", "Dist": np.random.randint(10, r_max), "Deg": np.random.randint(0, 360), "Spd": np.random.randint(900, 28000)} for i in range(count)]
 
-# --- 4. SIDEBAR (PROFESSIONAL CONTROLS) ---
+# --- 4. SIDEBAR (STABLE BRANDING) ---
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/f/f4/Flag_of_Haiti.svg", caption="DSM Official Origin")
-    st.title("📡 RADAR CONTROL")
+    # FIX: Cleaner flag implementation without "broken" caption text
+    st.markdown("""
+        <div style='text-align: center;'>
+            <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Flag_of_Haiti.svg/640px-Flag_of_Haiti.svg.png' width='200' style='border-radius: 3px;'>
+            <h3 style='margin-top: 10px; color: #00FF41;'>DSM RADAR CONTROL</h3>
+        </div>
+        <hr style='border: 1px solid #333;'>
+    """, unsafe_allow_html=True)
     
-    st.markdown("### 📍 COORDINATES")
+    st.markdown("### 📍 CENTER POINT")
     u_lat = st.number_input("Latitude", value=18.53, format="%.4f")
     u_lon = st.number_input("Longitude", value=-72.33, format="%.4f")
     
-    st.markdown("### 📏 SCAN RADIUS")
-    m_range = st.slider("Max Range (km)", 50, 5000, 1000, 50)
+    st.markdown("### 📡 DETECTION DEPTH")
+    m_range = st.slider("Range Radius (km)", 50, 5000, 1500, 50)
     
     st.markdown("---")
     st.session_state.demo_mode = st.toggle("🛰️ Demo Mode", value=True)
-    os_user = st.text_input("OpenSky User")
-    os_pass = st.text_input("OpenSky Pass", type="password")
+    os_user = st.text_input("OpenSky ID")
+    os_pass = st.text_input("OpenSky Key", type="password")
     
     st.markdown("---")
     st.write("**Owner:** Gesner Deslandes")
     st.write("📞 (509)-4738-5663")
-    if st.button("🔴 SHUTDOWN SYSTEM"):
+    if st.button("TERMINATE SESSION"):
         st.session_state.authenticated = False
         st.rerun()
 
-# --- 5. MAIN INTERFACE ---
-st.markdown("<h1 style='color: #00FF41; text-align: center;'>🔴 DESLANDES STRATOSPHERE MONITOR</h1>", unsafe_allow_html=True)
+# --- 5. MAIN RADAR INTERFACE ---
+st.markdown("<h1 style='color: #00FF41; text-align: center; border-bottom: 2px solid #004400; padding-bottom: 10px;'>🔴 DESLANDES STRATOSPHERE MONITOR</h1>", unsafe_allow_html=True)
 
-app_mode = st.radio("ACTIVE SENSORS", ["✈️ Aircraft", "🛰️ Satellite", "🚀 Missile"], horizontal=True, label_visibility="collapsed")
+app_mode = st.radio("SENSORS", ["✈️ Aircraft", "🛰️ Satellite", "🚀 Missile"], horizontal=True, label_visibility="collapsed")
 active_key = app_mode.split(" ")[1]
 
 objects = get_radar_data(active_key, os_user, os_pass, u_lat, u_lon, m_range)
@@ -87,14 +94,14 @@ objects = get_radar_data(active_key, os_user, os_pass, u_lat, u_lon, m_range)
 col_radar, col_data = st.columns([2, 1])
 
 with col_radar:
-    st.subheader(f"📡 {active_key} Sweep | Center: {u_lat}, {u_lon}")
+    st.subheader(f"📡 {active_key.upper()} SCANNING... [RANGE: {m_range}KM]")
     fig = go.Figure()
-    sweep = (time.time() * 120) % 360 # High speed sweep
+    sweep_pos = (time.time() * 125) % 360 
     
-    # Glow Radar Sweep
-    fig.add_trace(go.Scatterpolar(r=[0, m_range], theta=[sweep, sweep], mode='lines', line=dict(color='#00FF41', width=6), opacity=0.8, showlegend=False))
+    # Tactical Radar Sweep
+    fig.add_trace(go.Scatterpolar(r=[0, m_range], theta=[sweep_pos, sweep_pos], mode='lines', line=dict(color='#00FF41', width=7), opacity=0.9, showlegend=False))
     
-    # Plot Targets
+    # Tactical Targets
     fig.add_trace(go.Scatterpolar(
         r=[o['Dist'] for o in objects], theta=[o['Deg'] for o in objects],
         mode='markers+text', marker=dict(size=14, color='red', symbol='cross', line=dict(color='white', width=1)),
@@ -110,21 +117,27 @@ with col_radar:
     st.plotly_chart(fig, use_container_width=True)
 
 with col_data:
-    st.error(f"⚠️ {active_key.upper()} TARGET INTELLIGENCE")
+    st.error(f"🔴 {active_key.upper()} TARGET LOG")
     st.dataframe(pd.DataFrame(objects), hide_index=True, use_container_width=True)
     
     st.markdown("---")
-    # THE PROFESSIONAL BRANDING
-    st.success("🇭🇹 **MADE IN HAITI BY GLOBALINTERNET.PY**")
+    # THE PROFESSIONAL BRANDING (Fixed Style)
+    st.markdown("""
+        <div style='background-color: #00209F; padding: 5px; text-align: center; border-radius: 5px 5px 0 0;'>
+            <span style='color: white; font-weight: bold;'>MADE IN HAITI</span>
+        </div>
+        <div style='background-color: #D21034; padding: 5px; text-align: center; border-radius: 0 0 5px 5px;'>
+            <span style='color: white; font-weight: bold;'>GLOBALINTERNET.PY</span>
+        </div>
+    """, unsafe_allow_html=True)
     
     with st.container(border=True):
-        st.write(f"**License ID:** DSM-2026-X")
         st.write(f"**Developer:** Gesner Deslandes")
-        st.write(f"**Status:** System Operational")
+        st.write(f"**License:** DSM-2026-PREMIUM")
+        st.write(f"**Payment:** (509)-4738-5663")
     
     report_data = pd.DataFrame(objects).to_csv(index=False)
-    st.download_button("📥 DOWNLOAD INTEL REPORT", report_data, f"DSM_{active_key}_INTEL.csv")
+    st.download_button("📥 DOWNLOAD TACTICAL DATA", report_data, f"DSM_INTEL_{active_key}.csv")
 
-# Automatic refresh for the radar sweep effect
 time.sleep(1)
 st.rerun()
