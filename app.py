@@ -31,132 +31,114 @@ def check_password():
 
 check_password()
 
-# --- 3. PROFESSIONAL BRANDING & LICENSE ---
+# --- 3. BRANDING & LICENSE ---
 OWNER_INFO = """
 **Developer:** GlobaLInternet.py  
 **Owner:** Gesner Deslandes  
 **Location:** 🇭🇹 Port-au-Prince, Haiti  
 **Contact:** (509)-4738-5663  
-*(This number accepts payments via PRISME Transfer for software sales and licensing)* **Email:** deslandes78@gmail.com
+*(Accepted: PRISME Transfer for Sales)* **Email:** deslandes78@gmail.com
 """
 
 SOFTWARE_LICENSE = """
 ### 📜 DSM PROPRIETARY LICENSE
 © 2026 GlobaLInternet.py. All Rights Reserved.
-This software and its source code are the sole property of Gesner Deslandes. 
-Unauthorized copying, modification, or distribution of this monitor 
-is strictly prohibited. 
+Owner: Gesner Deslandes.
+Unauthorized distribution is prohibited.
 **MADE IN HAITI**
 """
 
-# --- 4. LIVE DATA ENGINE (OPENSKY) ---
-def fetch_live_flights(username, password):
-    url = "https://opensky-network.org/api/states/all"
-    try:
-        auth = (username, password) if username and password else None
-        response = requests.get(url, auth=auth, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            states = data.get('states', [])[:15] # Tracking top 15 detected objects
-            real_objects = []
-            for s in states:
-                real_objects.append({
-                    "Target ID": s[1] or s[0],
-                    "Distance (km)": np.random.randint(400, 2800), # Polar radius
-                    "Bearing (°)": np.random.randint(0, 360),    # Polar theta
-                    "Velocity (km/h)": int(s[9] * 3.6) if s[9] else 0,
-                    "Origin": s[2]
-                })
-            return real_objects
-        return None
-    except:
-        return None
+# --- 4. MULTI-MODE DATA ENGINE ---
+def get_radar_data(mode, username, password):
+    """Unified engine for Aircraft, Satellite, and Missile detection."""
+    if mode == "Aircraft" and not st.session_state.get('demo_mode', True):
+        # REAL-TIME OPENSKY INTEGRATION
+        url = "https://opensky-network.org/api/states/all"
+        try:
+            auth = (username, password) if username and password else None
+            response = requests.get(url, auth=auth, timeout=5)
+            if response.status_code == 200:
+                states = response.json().get('states', [])[:15]
+                return [{"ID": s[1] or s[0], "Dist": np.random.randint(500, 2500), "Deg": np.random.randint(0, 360), "Spd": int(s[9]*3.6) if s[9] else 0, "Type": "Live Aircraft"} for s in states]
+        except: pass
+    
+    # SIMULATED / CACHED MODES (Satellites & Missiles)
+    if mode == "Satellite":
+        return [
+            {"ID": "ISS-CORE", "Dist": 2800, "Deg": (time.time()*5)%360, "Spd": 27600, "Type": "LEO Satellite"},
+            {"ID": "STARLINK-A1", "Dist": 2400, "Deg": (time.time()*8)%360, "Spd": 27000, "Type": "Communication"},
+            {"ID": "GPS-NAV-04", "Dist": 2900, "Deg": (time.time()*2)%360, "Spd": 14000, "Type": "Navigation"}
+        ]
+    elif mode == "Missile":
+        return [
+            {"ID": "T-BALLISTIC-1", "Dist": 1200, "Deg": 45, "Spd": 15000, "Type": "Hypersonic"},
+            {"ID": "T-CRUISE-X", "Dist": 800, "Deg": 310, "Spd": 950, "Type": "Subsonic"}
+        ]
+    else: # Demo Aircraft
+        return [{"ID": f"DEMO-FLT-{i}", "Dist": np.random.randint(400, 2800), "Deg": np.random.randint(0, 360), "Spd": 850, "Type": "Commercial"} for i in range(5)]
 
-# --- 5. SIDEBAR CONTROLS ---
+# --- 5. SIDEBAR & SETTINGS ---
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/5/56/Flag_of_Haiti.svg", width=100)
-    st.title("DSM CONTROL PANEL")
-    st.info("🛰️ **Deslandes Global Surveillance**")
+    st.image("https://upload.wikimedia.org/wikipedia/commons/5/56/Flag_of_Haiti.svg", width=80)
+    st.title("DSM SETTINGS")
+    st.session_state.demo_mode = st.toggle("🛰️ Demo Mode", value=True)
     
     st.markdown("---")
-    demo_mode = st.toggle("🛰️ Demo Mode", value=True, help="Switch off to use real-time OpenSky data")
+    st.subheader("Global Credentials")
+    os_user = st.text_input("OpenSky User")
+    os_pass = st.text_input("OpenSky Pass", type="password")
     
     st.markdown("---")
-    st.subheader("🔑 API Credentials")
-    os_user = st.text_input("OpenSky Username", help="Register at opensky-network.org")
-    os_pass = st.text_input("OpenSky Password", type="password")
-    
-    st.markdown("---")
-    st.subheader("👤 Contact & Sales")
     st.markdown(OWNER_INFO)
-    
-    if st.button("Logout / Lock"):
+    if st.button("Lock System"):
         st.session_state.authenticated = False
         st.rerun()
 
-# --- 6. MAIN RADAR INTERFACE ---
+# --- 6. MAIN UI & MODE SELECTOR ---
 st.title("🔴 DSM: DESLANDES STRATOSPHERE MONITOR")
 
-if demo_mode:
-    st.warning("📡 CACHE/DEMO MODE ACTIVE")
-    objects = [
-        {"Target ID": "INFINITY-01", "Distance (km)": 1400, "Bearing (°)": 45, "Velocity (km/h)": 920, "Origin": "Local"},
-        {"Target ID": "SAT-DSM-X", "Distance (km)": 2600, "Bearing (°)": 190, "Velocity (km/h)": 28000, "Origin": "Orbit"}
-    ]
-else:
-    st.success("🌐 LIVE GLOBAL DETECTION ACTIVE")
-    live_data = fetch_live_flights(os_user, os_pass)
-    objects = live_data if live_data else [{"Target ID": "SEARCHING...", "Distance (km)": 0, "Bearing (°)": 0, "Velocity (km/h)": 0, "Origin": "N/A"}]
+# Mode Selection (Functions for all 3 applications integrated)
+app_mode = st.radio("SELECT MONITORING DOMAIN", ["✈️ Aircraft Radar", "🛰️ Satellite Tracker", "🚀 Missile Detector"], horizontal=True)
+active_key = app_mode.split(" ")[1] # Extracts Aircraft, Satellite, or Missile
 
-# --- 7. PLOTLY RADAR DESIGN ---
-fig = go.Figure()
-sweep_angle = (time.time() * 90) % 360
+objects = get_radar_data(active_key, os_user, os_pass)
 
-# Radar Sweep Animation
-fig.add_trace(go.Scatterpolar(
-    r=[0, 3000], theta=[sweep_angle, sweep_angle],
-    mode='lines', line=dict(color='#00FF41', width=5), opacity=0.7, showlegend=False
-))
-
-# Object Plotting
-fig.add_trace(go.Scatterpolar(
-    r=[o['Distance (km)'] for o in objects],
-    theta=[o['Bearing (°)'] for o in objects],
-    mode='markers+text',
-    marker=dict(size=14, color='red', symbol='cross', line=dict(color='white', width=1)),
-    text=[o['Target ID'] for o in objects],
-    textposition="top right"
-))
-
-fig.update_layout(
-    polar=dict(
-        bgcolor="black",
-        radialaxis=dict(gridcolor="#004400", color="lime", range=[0, 3000]),
-        angularaxis=dict(gridcolor="#004400", color="lime")
-    ),
-    paper_bgcolor="black", font_color="lime", height=700,
-    margin=dict(l=50, r=50, t=50, b=50)
-)
-
-st.plotly_chart(fig, use_container_width=True)
-
-# --- 8. INTELLIGENCE DATA & LICENSE ---
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    st.subheader("📋 Intelligence Data Feed")
-    st.table(pd.DataFrame(objects))
+    st.subheader(f"📡 Tactical Sweep: {app_mode}")
+    fig = go.Figure()
+    sweep = (time.time() * 90) % 360
+    
+    # Animated Radar Pulse
+    fig.add_trace(go.Scatterpolar(r=[0, 3000], theta=[sweep, sweep], mode='lines', line=dict(color='#00FF41', width=5), opacity=0.7, showlegend=False))
+    
+    # Plot Targets
+    fig.add_trace(go.Scatterpolar(
+        r=[o['Dist'] for o in objects], theta=[o['Deg'] for o in objects],
+        mode='markers+text', marker=dict(size=14, color='red', symbol='cross'),
+        text=[o['ID'] for o in objects], textposition="top right"
+    ))
+
+    fig.update_layout(
+        polar=dict(bgcolor="black", radialaxis=dict(gridcolor="#004400", color="lime", range=[0, 3000]),
+                   angularaxis=dict(gridcolor="#004400", color="lime")),
+        paper_bgcolor="black", font_color="lime", height=650
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 with col2:
-    st.subheader("📄 System License")
+    st.warning("⚠️ TARGET ANALYSIS ACTIVE")
+    st.dataframe(pd.DataFrame(objects), hide_index=True)
+    
+    st.markdown("---")
     st.info(SOFTWARE_LICENSE)
     
-    report_text = f"DSM SECURITY REPORT\nDate: {datetime.now()}\nOwner: Gesner Deslandes\nTargets Detected: {len(objects)}"
-    st.download_button("📥 Export Intelligence Report", report_text, file_name="DSM_Security_Report.txt")
+    report_data = f"DSM SECURITY REPORT\nSource: GlobaLInternet.py\nDate: {datetime.now()}\nMode: {app_mode}\n"
+    st.download_button("📥 Export Intelligence", report_data, file_name=f"DSM_{active_key}_Report.txt")
 
 st.markdown("---")
 st.markdown("<h3 style='text-align: center;'>🇭🇹 MADE IN HAITI BY GLOBALINTERNET.PY</h3>", unsafe_allow_html=True)
 
-# Auto-refresh loop
 time.sleep(2)
 st.rerun()
