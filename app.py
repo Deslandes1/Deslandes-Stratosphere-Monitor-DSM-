@@ -12,7 +12,7 @@ st.set_page_config(page_title="DSM - Deslandes Stratosphere Monitor", layout="wi
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
-# --- 2. AUTHENTICATION ---
+# --- 2. AUTHENTICATION & LOGIN UI ---
 def check_password():
     def password_entered():
         if st.session_state["password"] == "20082010":
@@ -22,8 +22,21 @@ def check_password():
             st.error("❌ Access Denied")
 
     if not st.session_state["authenticated"]:
-        st.markdown("<h1 style='text-align: center;'>🇭🇹</h1>", unsafe_allow_html=True)
-        st.markdown("<h2 style='text-align: center;'>DESLANDES STRATOSPHERE MONITOR</h2>", unsafe_allow_html=True)
+        # RESTORED: LARGE HAITIAN FLAG ON LOGIN
+        st.markdown("""
+            <div style='text-align: center;'>
+                <div style='height: 80px; background-color: #00209F; border-radius: 10px 10px 0 0;'></div>
+                <div style='height: 80px; background-color: #D21034; border-radius: 0 0 10px 10px;'>
+                    <div style='background-color: white; width: 60px; height: 50px; margin: -25px auto; border: 1px solid #ccc; border-radius: 3px; display: flex; align-items: center; justify-content: center;'>
+                        <img src='https://upload.wikimedia.org/wikipedia/commons/f/f4/Coat_of_arms_of_Haiti.svg' width='40'>
+                    </div>
+                </div>
+            </div>
+            <br>
+            <h2 style='text-align: center; color: white;'>DESLANDES STRATOSPHERE MONITOR</h2>
+            <p style='text-align: center; color: #aaa;'>Licensed Software by GlobaLInternet.py</p>
+        """, unsafe_allow_html=True)
+        
         st.text_input("Enter Access Key", type="password", on_change=password_entered, key="password")
         st.stop()
 
@@ -32,7 +45,6 @@ check_password()
 # --- 3. DATA ENGINE ---
 def get_radar_data(mode, user, pw, lat, lon, r_max):
     if mode == "Aircraft" and not st.session_state.get('demo_mode', True):
-        # Calculate bounding box for OpenSky API
         lat_delta = r_max / 111.0
         lon_delta = r_max / (111.0 * np.cos(np.radians(lat)))
         url = f"https://opensky-network.org/api/states/all?lamin={lat-lat_delta}&lomin={lon-lon_delta}&lamax={lat+lat_delta}&lomax={lon+lon_delta}"
@@ -44,22 +56,24 @@ def get_radar_data(mode, user, pw, lat, lon, r_max):
                 return [{"ID": s[1] or s[0], "Dist": np.random.randint(5, r_max), "Deg": np.random.randint(0, 360), "Spd": int(s[9]*3.6) if s[9] else 0} for s in states]
         except: pass
     
-    # Fallback/Simulation
-    count = 10 if mode == "Satellite" else 4
+    count = 12 if mode == "Satellite" else 5
     return [{"ID": f"TGT-{mode[:3]}-{i}", "Dist": np.random.randint(10, r_max), "Deg": np.random.randint(0, 360), "Spd": np.random.randint(900, 27000)} for i in range(count)]
 
 # --- 4. SIDEBAR CONTROLS ---
 with st.sidebar:
+    # RESTORED: SIDEBAR FLAG BANNER
+    st.markdown("""
+        <div style='background-color: #00209F; height: 10px; border-radius: 5px 5px 0 0;'></div>
+        <div style='background-color: #D21034; height: 10px; border-radius: 0 0 5px 5px;'></div>
+    """, unsafe_allow_html=True)
     st.title("🌐 RADAR CONTROL")
     
-    # Geo-Location Center
     st.subheader("Center Coordinates")
     u_lat = st.number_input("Latitude", value=18.53, format="%.4f")
     u_lon = st.number_input("Longitude", value=-72.33, format="%.4f")
     
-    # Max Range Control
-    st.subheader("Detection Parameters")
-    m_range = st.slider("Max Range (km)", 50, 5000, 1000, 50)
+    st.subheader("Detection Radius")
+    m_range = st.slider("Range (km)", 50, 5000, 1000, 50)
     
     st.markdown("---")
     st.session_state.demo_mode = st.toggle("🛰️ Demo Mode", value=True)
@@ -71,11 +85,13 @@ with st.sidebar:
     st.write("**GlobaLInternet.py**")
     st.write("Contact: (509)-4738-5663")
     st.caption("Payment via PRISME Transfer")
+    if st.button("Lock System"):
+        st.session_state.authenticated = False
+        st.rerun()
 
 # --- 5. MAIN INTERFACE ---
 st.title("🔴 DSM: DESLANDES STRATOSPHERE MONITOR")
 
-# Switcher for the three applications
 app_mode = st.radio("SENSORS", ["✈️ Aircraft", "🛰️ Satellite", "🚀 Missile"], horizontal=True, label_visibility="collapsed")
 active_key = app_mode.split(" ")[1]
 
@@ -84,14 +100,12 @@ objects = get_radar_data(active_key, os_user, os_pass, u_lat, u_lon, m_range)
 col_radar, col_data = st.columns([2, 1])
 
 with col_radar:
-    st.subheader(f"📡 {active_key} Sweep | Center: {u_lat}, {u_lon}")
+    st.subheader(f"📡 {active_key} Sweep | Location: {u_lat}, {u_lon}")
     fig = go.Figure()
-    sweep = (time.time() * 110) % 360
+    sweep = (time.time() * 115) % 360
     
-    # Radar Sweep Line
     fig.add_trace(go.Scatterpolar(r=[0, m_range], theta=[sweep, sweep], mode='lines', line=dict(color='#00FF41', width=5), showlegend=False))
     
-    # Target Plotting
     fig.add_trace(go.Scatterpolar(
         r=[o['Dist'] for o in objects], theta=[o['Deg'] for o in objects],
         mode='markers+text', marker=dict(size=12, color='red', symbol='cross'),
@@ -111,14 +125,12 @@ with col_data:
     st.table(pd.DataFrame(objects))
     
     st.markdown("---")
-    # Single Branding Instance
+    # Single Branding Instance - Restored Style
     st.success("🇭🇹 **MADE IN HAITI BY GLOBALINTERNET.PY**")
-    
     st.info(f"License Holder: Gesner Deslandes\nSoftware ID: DSM-2026-PRO")
     
     report_csv = pd.DataFrame(objects).to_csv(index=False)
     st.download_button("📥 Export Intelligence Report", report_csv, "DSM_Report.csv", "text/csv")
 
-# Final auto-refresh
 time.sleep(2)
 st.rerun()
