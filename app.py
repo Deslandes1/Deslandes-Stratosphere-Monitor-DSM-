@@ -4,7 +4,6 @@ import numpy as np
 import plotly.graph_objects as go
 import time
 import requests
-from datetime import datetime
 
 # --- 1. CONFIG & SESSION STATE ---
 st.set_page_config(page_title="DSM - Deslandes Stratosphere Monitor", layout="wide", page_icon="🇭🇹")
@@ -22,18 +21,12 @@ def check_password():
             st.error("❌ Access Denied")
 
     if not st.session_state["authenticated"]:
-        # OFFICIAL HAITIAN FLAG INTEGRATION (Blue, Red, and Coat of Arms)
+        # OFFICIAL HAITIAN FLAG (SVG INTEGRATION)
         st.markdown("""
-            <div style='text-align: center; margin-bottom: 20px;'>
-                <div style='background-color: #00209F; height: 60px; border-radius: 10px 10px 0 0; position: relative;'>
-                    <div style='background-color: #D21034; height: 60px; width: 100%; position: absolute; top: 60px; border-radius: 0 0 10px 10px;'></div>
-                    <div style='background-color: white; width: 80px; height: 70px; position: absolute; top: 25px; left: 50%; transform: translateX(-50%); border-radius: 5px; display: flex; align-items: center; justify-content: center; z-index: 10; border: 1px solid #ddd;'>
-                        <img src='https://upload.wikimedia.org/wikipedia/commons/f/f4/Coat_of_arms_of_Haiti.svg' width='60'>
-                    </div>
-                </div>
+            <div style='text-align: center; margin-bottom: 30px;'>
+                <img src='https://upload.wikimedia.org/wikipedia/commons/f/f4/Flag_of_Haiti.svg' width='400' style='border-radius: 10px; border: 1px solid #555; box-shadow: 0px 4px 15px rgba(0,0,0,0.5);'>
             </div>
-            <br><br><br>
-            <h2 style='text-align: center; color: white; margin-top: 20px;'>DESLANDES STRATOSPHERE MONITOR</h2>
+            <h2 style='text-align: center; color: white;'>DESLANDES STRATOSPHERE MONITOR</h2>
             <p style='text-align: center; color: #aaa;'>Enterprise Surveillance by GlobaLInternet.py</p>
         """, unsafe_allow_html=True)
         
@@ -61,13 +54,8 @@ def get_radar_data(mode, user, pw, lat, lon, r_max):
 
 # --- 4. SIDEBAR CONTROLS ---
 with st.sidebar:
-    # Sidebar Minimal Flag
-    st.markdown("""
-        <div style='display: flex; height: 20px; border-radius: 5px; overflow: hidden; border: 1px solid #555;'>
-            <div style='background-color: #00209F; flex: 1;'></div>
-            <div style='background-color: #D21034; flex: 1;'></div>
-        </div>
-    """, unsafe_allow_html=True)
+    # Sidebar Official Flag Banner
+    st.image("https://upload.wikimedia.org/wikipedia/commons/f/f4/Flag_of_Haiti.svg", use_container_width=True)
     st.title("🌐 RADAR CONTROL")
     
     u_lat = st.number_input("Latitude", value=18.53, format="%.4f")
@@ -122,7 +110,14 @@ with col_data:
     st.table(pd.DataFrame(objects))
     
     st.markdown("---")
-    st.success("🇭🇹 **MADE IN HAITI BY GLOBALINTERNET.PY**")
+    # Single Branding Instance - Official Flag Mini
+    st.markdown("""
+        <div style='display: flex; align-items: center; background-color: #1e1e1e; padding: 10px; border-radius: 5px; border-left: 5px solid #d21034;'>
+            <img src='https://upload.wikimedia.org/wikipedia/commons/f/f4/Flag_of_Haiti.svg' width='40' style='margin-right: 15px;'>
+            <span style='color: white; font-weight: bold;'>MADE IN HAITI BY GLOBALINTERNET.PY</span>
+        </div>
+    """, unsafe_allow_html=True)
+    
     st.info(f"License: DSM-2026-PRO\nOwner: Gesner Deslandes")
     
     report_csv = pd.DataFrame(objects).to_csv(index=False)
