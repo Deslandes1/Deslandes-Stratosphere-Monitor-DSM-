@@ -12,7 +12,7 @@ st.set_page_config(page_title="DSM - Deslandes Stratosphere Monitor", layout="wi
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
-# --- 2. AUTHENTICATION & LOGIN UI ---
+# --- 2. AUTHENTICATION & OFFICIAL FLAG UI ---
 def check_password():
     def password_entered():
         if st.session_state["password"] == "20082010":
@@ -22,22 +22,22 @@ def check_password():
             st.error("❌ Access Denied")
 
     if not st.session_state["authenticated"]:
-        # RESTORED: LARGE HAITIAN FLAG ON LOGIN
+        # OFFICIAL HAITIAN FLAG INTEGRATION (Blue, Red, and Coat of Arms)
         st.markdown("""
-            <div style='text-align: center;'>
-                <div style='height: 80px; background-color: #00209F; border-radius: 10px 10px 0 0;'></div>
-                <div style='height: 80px; background-color: #D21034; border-radius: 0 0 10px 10px;'>
-                    <div style='background-color: white; width: 60px; height: 50px; margin: -25px auto; border: 1px solid #ccc; border-radius: 3px; display: flex; align-items: center; justify-content: center;'>
-                        <img src='https://upload.wikimedia.org/wikipedia/commons/f/f4/Coat_of_arms_of_Haiti.svg' width='40'>
+            <div style='text-align: center; margin-bottom: 20px;'>
+                <div style='background-color: #00209F; height: 60px; border-radius: 10px 10px 0 0; position: relative;'>
+                    <div style='background-color: #D21034; height: 60px; width: 100%; position: absolute; top: 60px; border-radius: 0 0 10px 10px;'></div>
+                    <div style='background-color: white; width: 80px; height: 70px; position: absolute; top: 25px; left: 50%; transform: translateX(-50%); border-radius: 5px; display: flex; align-items: center; justify-content: center; z-index: 10; border: 1px solid #ddd;'>
+                        <img src='https://upload.wikimedia.org/wikipedia/commons/f/f4/Coat_of_arms_of_Haiti.svg' width='60'>
                     </div>
                 </div>
             </div>
-            <br>
-            <h2 style='text-align: center; color: white;'>DESLANDES STRATOSPHERE MONITOR</h2>
-            <p style='text-align: center; color: #aaa;'>Licensed Software by GlobaLInternet.py</p>
+            <br><br><br>
+            <h2 style='text-align: center; color: white; margin-top: 20px;'>DESLANDES STRATOSPHERE MONITOR</h2>
+            <p style='text-align: center; color: #aaa;'>Enterprise Surveillance by GlobaLInternet.py</p>
         """, unsafe_allow_html=True)
         
-        st.text_input("Enter Access Key", type="password", on_change=password_entered, key="password")
+        st.text_input("Enter Access Key to Unlock", type="password", on_change=password_entered, key="password")
         st.stop()
 
 check_password()
@@ -61,19 +61,18 @@ def get_radar_data(mode, user, pw, lat, lon, r_max):
 
 # --- 4. SIDEBAR CONTROLS ---
 with st.sidebar:
-    # RESTORED: SIDEBAR FLAG BANNER
+    # Sidebar Minimal Flag
     st.markdown("""
-        <div style='background-color: #00209F; height: 10px; border-radius: 5px 5px 0 0;'></div>
-        <div style='background-color: #D21034; height: 10px; border-radius: 0 0 5px 5px;'></div>
+        <div style='display: flex; height: 20px; border-radius: 5px; overflow: hidden; border: 1px solid #555;'>
+            <div style='background-color: #00209F; flex: 1;'></div>
+            <div style='background-color: #D21034; flex: 1;'></div>
+        </div>
     """, unsafe_allow_html=True)
     st.title("🌐 RADAR CONTROL")
     
-    st.subheader("Center Coordinates")
     u_lat = st.number_input("Latitude", value=18.53, format="%.4f")
     u_lon = st.number_input("Longitude", value=-72.33, format="%.4f")
-    
-    st.subheader("Detection Radius")
-    m_range = st.slider("Range (km)", 50, 5000, 1000, 50)
+    m_range = st.slider("Max Range (km)", 50, 5000, 1000, 50)
     
     st.markdown("---")
     st.session_state.demo_mode = st.toggle("🛰️ Demo Mode", value=True)
@@ -81,10 +80,8 @@ with st.sidebar:
     os_pass = st.text_input("OpenSky Pass", type="password")
     
     st.markdown("---")
-    st.markdown("### Owner Information")
-    st.write("**GlobaLInternet.py**")
-    st.write("Contact: (509)-4738-5663")
-    st.caption("Payment via PRISME Transfer")
+    st.write("**GlobaLInternet.py** / Gesner Deslandes")
+    st.write("📞 (509)-4738-5663")
     if st.button("Lock System"):
         st.session_state.authenticated = False
         st.rerun()
@@ -125,12 +122,11 @@ with col_data:
     st.table(pd.DataFrame(objects))
     
     st.markdown("---")
-    # Single Branding Instance - Restored Style
     st.success("🇭🇹 **MADE IN HAITI BY GLOBALINTERNET.PY**")
-    st.info(f"License Holder: Gesner Deslandes\nSoftware ID: DSM-2026-PRO")
+    st.info(f"License: DSM-2026-PRO\nOwner: Gesner Deslandes")
     
     report_csv = pd.DataFrame(objects).to_csv(index=False)
-    st.download_button("📥 Export Intelligence Report", report_csv, "DSM_Report.csv", "text/csv")
+    st.download_button("📥 Export Intelligence", report_csv, "DSM_Report.csv", "text/csv")
 
 time.sleep(2)
 st.rerun()
