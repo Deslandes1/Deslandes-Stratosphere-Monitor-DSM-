@@ -12,7 +12,7 @@ st.set_page_config(page_title="DSM - Deslandes Stratosphere Monitor", layout="wi
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
-# --- 2. AUTHENTICATION & STABLE FLAG UI ---
+# --- 2. AUTHENTICATION & START OF PAGE (FLAG FIX) ---
 def check_password():
     def password_entered():
         if st.session_state["password"] == "20082010":
@@ -22,16 +22,16 @@ def check_password():
             st.error("❌ Access Denied")
 
     if not st.session_state["authenticated"]:
-        # FIX: Using a direct, stable render for the National Flag
+        # THE START OF THE PAGE - OFFICIAL NATIONAL FLAG
         st.markdown("""
             <div style='text-align: center; margin-bottom: 20px;'>
-                <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Flag_of_Haiti.svg/1280px-Flag_of_Haiti.svg.png' width='400' style='border-radius: 5px; box-shadow: 0px 5px 20px rgba(0,0,0,0.6); border: 1px solid #333;'>
+                <img src='https://flagcdn.com/w640/ht.png' width='450' style='border-radius: 8px; box-shadow: 0px 8px 25px rgba(0,0,0,0.7);'>
             </div>
-            <h1 style='text-align: center; color: #00FF41; font-family: "Courier New", Courier, monospace;'>DSM-2026: SYSTEM ENCRYPTED</h1>
-            <p style='text-align: center; color: #888;'>GlobaLInternet.py Security Infrastructure</p>
+            <h1 style='text-align: center; color: #00FF41; font-family: "Courier New", Courier, monospace;'>DSM-2026: SYSTEM SECURED</h1>
+            <p style='text-align: center; color: #bbbbbb;'>GlobaLInternet.py Security Infrastructure | Made in Haiti</p>
         """, unsafe_allow_html=True)
         
-        st.text_input("INPUT ACCESS KEY", type="password", on_change=password_entered, key="password")
+        st.text_input("INPUT AUTHORIZATION KEY", type="password", on_change=password_entered, key="password")
         st.stop()
 
 check_password()
@@ -53,22 +53,22 @@ def get_radar_data(mode, user, pw, lat, lon, r_max):
     count = 18 if mode == "Satellite" else 7
     return [{"ID": f"TGT-{mode[:3].upper()}-{i}", "Dist": np.random.randint(10, r_max), "Deg": np.random.randint(0, 360), "Spd": np.random.randint(900, 28000)} for i in range(count)]
 
-# --- 4. SIDEBAR (STABLE BRANDING) ---
+# --- 4. SIDEBAR (TOP FLAG FIX) ---
 with st.sidebar:
-    # FIX: Cleaner flag implementation without "broken" caption text
+    # OFFICIAL FLAG ABOVE "DSM RADAR CONTROL"
     st.markdown("""
         <div style='text-align: center;'>
-            <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Flag_of_Haiti.svg/640px-Flag_of_Haiti.svg.png' width='200' style='border-radius: 3px;'>
-            <h3 style='margin-top: 10px; color: #00FF41;'>DSM RADAR CONTROL</h3>
+            <img src='https://flagcdn.com/w320/ht.png' width='220' style='border-radius: 4px; border: 1px solid #444;'>
+            <h2 style='margin-top: 15px; color: #00FF41; font-family: monospace;'>DSM RADAR CONTROL</h2>
         </div>
         <hr style='border: 1px solid #333;'>
     """, unsafe_allow_html=True)
     
-    st.markdown("### 📍 CENTER POINT")
+    st.markdown("### 📍 COORDINATES")
     u_lat = st.number_input("Latitude", value=18.53, format="%.4f")
     u_lon = st.number_input("Longitude", value=-72.33, format="%.4f")
     
-    st.markdown("### 📡 DETECTION DEPTH")
+    st.markdown("### 📡 SCAN RADIUS")
     m_range = st.slider("Range Radius (km)", 50, 5000, 1500, 50)
     
     st.markdown("---")
@@ -134,7 +134,7 @@ with col_data:
     with st.container(border=True):
         st.write(f"**Developer:** Gesner Deslandes")
         st.write(f"**License:** DSM-2026-PREMIUM")
-        st.write(f"**Payment:** (509)-4738-5663")
+        st.write(f"**Contact:** (509)-4738-5663")
     
     report_data = pd.DataFrame(objects).to_csv(index=False)
     st.download_button("📥 DOWNLOAD TACTICAL DATA", report_data, f"DSM_INTEL_{active_key}.csv")
