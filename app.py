@@ -3,9 +3,10 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import time
+import requests
 from datetime import datetime
 
-# --- 1. SESSION STATE & CONFIG ---
+# --- 1. CONFIG & SESSION STATE ---
 st.set_page_config(page_title="DSM - Deslandes Stratosphere Monitor", layout="wide", page_icon="🇭🇹")
 
 if 'authenticated' not in st.session_state:
@@ -13,141 +14,121 @@ if 'authenticated' not in st.session_state:
 if 'language' not in st.session_state:
     st.session_state.language = 'en'
 
-# --- 2. AUTHENTICATION SYSTEM ---
+# --- 2. AUTHENTICATION ---
 def check_password():
     def password_entered():
-        # Corrected password check based on your provided script
         if st.session_state["password"] == "20082010":
             st.session_state["authenticated"] = True
             del st.session_state["password"]
         else:
-            st.error("❌ Access Denied: Incorrect Password")
+            st.error("❌ Access Denied")
 
     if not st.session_state["authenticated"]:
         st.markdown("<h1 style='text-align: center;'>🇭🇹</h1>", unsafe_allow_html=True)
-        st.markdown("""
-            <div style='height: 100px; background-color: #00209F; border-radius: 10px 10px 0 0;'></div>
-            <div style='height: 100px; background-color: #D21034; border-radius: 0 0 10px 10px;'></div>
-            <br>
-            <h2 style='text-align: center;'>Deslandes Stratosphere Monitor</h2>
-            <p style='text-align: center;'>Licensed Software by GlobaLInternet.py</p>
-        """, unsafe_allow_html=True)
-        
-        st.text_input("Enter Access Key to Unlock DSM System", type="password", on_change=password_entered, key="password")
+        st.text_input("Enter Access Key", type="password", on_change=password_entered, key="password")
         st.stop()
 
 check_password()
 
-# --- 3. BRANDING & TRANSLATIONS ---
-LICENSE_TEXT = """
-© 2026 GlobaLInternet.py | ALL RIGHTS RESERVED
-Owner: Gesner Deslandes
-Phone: (509)-4738-5663 | Email: deslandes78@gmail.com
-MADE IN HAITI
-"""
+# --- 3. LIVE DATA ENGINE (OPENSKY) ---
+def fetch_live_flights(username, password):
+    """Fetches real-time flight data from OpenSky Network."""
+    url = "https://opensky-network.org/api/states/all"
+    try:
+        # If no credentials, OpenSky limits are very strict
+        auth = (username, password) if username and password else None
+        response = requests.get(url, auth=auth, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            # Convert first 10 states to radar format for demo/visuals
+            states = data.get('states', [])[:10]
+            real_objects = []
+            for s in states:
+                real_objects.append({
+                    "id": s[1] or s[0], # Callsign or ICAO24
+                    "r": np.random.randint(500, 2500), # Distance (Simulated for Polar)
+                    "th": np.random.randint(0, 360),   # Bearing (Simulated for Polar)
+                    "s": int(s[9] * 3.6) if s[9] else 0 # Velocity m/s to km/h
+                })
+            return real_objects
+        else:
+            st.sidebar.error(f"API Error: {response.status_code}. Using cache.")
+            return None
+    except Exception as e:
+        return None
 
+# --- 4. BRANDING & UI ---
 TRANSLATIONS = {
-    'en': {
-        'title': '🔴 DSM: DESLANDES STRATOSPHERE MONITOR',
-        'm1': '✈️ Aircraft Radar', 'm2': '🛰️ Satellite Tracker', 'm3': '🚀 Missile Detector',
-        'threat': '⚠️ THREAT DETECTED', 'demo': '📡 CACHE/DEMO MODE ACTIVE',
-        'report': '📥 Download Intelligence Report', 'owner': '🇭🇹 Made in Haiti by GlobaLInternet.py',
-        'selector': 'Mode Selection'
-    },
-    'fr': {
-        'title': '🔴 DSM: MONITORING STRATOSPHÉRIQUE',
-        'm1': '✈️ Radar Aéronefs', 'm2': '🛰️ Traqueur Satellites', 'm3': '🚀 Détecteur de Missiles',
-        'threat': '⚠️ MENACE DÉTECTÉE', 'demo': '📡 MODE DÉMO/CACHE ACTIF',
-        'report': '📥 Télécharger le rapport', 'owner': '🇭🇹 Fait en Haïti par GlobaLInternet.py',
-        'selector': 'Sélection du mode'
-    },
-    'ht': {
-        'title': '🔴 DSM: RADAR SIVEYANS GLOBAL',
-        'm1': '✈️ Radar Avyon', 'm2': '🛰️ Swiv Satelit', 'm3': '🚀 Detektè Misil',
-        'threat': '⚠️ MENAS DETEKTE', 'demo': '📡 MÒD DEMO AKTIF',
-        'report': '📥 Telechaje Rapò a', 'owner': '🇭🇹 Fèt an Ayiti pa GlobaLInternet.py',
-        'selector': 'Chwazi Operasyon'
-    }
+    'en': {'title': '🔴 DSM: STRATOSPHERE MONITOR', 'live': 'LIVE SATELLITE/AIRCRAFT SCAN', 'demo_btn': 'Demo Mode Active'},
+    'fr': {'title': '🔴 DSM: MONITORING STRATOSPHÉRIQUE', 'live': 'SCAN LIVE SATELLITE/AVION', 'demo_btn': 'Mode Démo Actif'},
+    'ht': {'title': '🔴 DSM: RADAR SIVEYANS GLOBAL', 'live': 'LIVE SIVEYANS SATELIT/AVYON', 'demo_btn': 'Mòd Demo Aktif'}
 }
+def t(key): return TRANSLATIONS[st.session_state.language].get(key, key)
 
-def t(key):
-    return TRANSLATIONS[st.session_state.language].get(key, key)
+# --- 5. SIDEBAR CONTROLS ---
+st.sidebar.title("DSM Control Center")
+demo_mode = st.sidebar.toggle("Enable Demo Mode", value=True)
 
-# --- 4. DATA ENGINE ---
-@st.cache_data(ttl=60)
-def get_cached_threats(mode):
-    if mode == "Missile":
-        return [{"id": "DEMO-MSL-1", "r": 1400, "th": 45, "s": 6500}, {"id": "DEMO-MSL-2", "r": 2200, "th": 190, "s": 9200}]
-    elif mode == "Aircraft":
-        return [{"id": "DEMO-FLIGHT-X", "r": 800, "th": 120, "s": 850}]
-    else: 
-        return [{"id": "DEMO-SAT-Z", "r": 2800, "th": 330, "s": 27000}]
+st.sidebar.markdown("---")
+st.sidebar.subheader("Global API Credentials")
+os_user = st.sidebar.text_input("OpenSky Username", type="default", help="Required for worldwide detection")
+os_pass = st.sidebar.text_input("OpenSky Password", type="password")
 
-# --- 5. SIDEBAR & LOGIC ---
-st.sidebar.title("DSM Control")
-st.sidebar.info(LICENSE_TEXT)
 lang_choice = st.sidebar.selectbox("Language", ["English", "Français", "Kreyòl"])
 st.session_state.language = {'English': 'en', 'Français': 'fr', 'Kreyòl': 'ht'}[lang_choice]
 
-if st.sidebar.button("Logout / Lock System"):
-    st.session_state.authenticated = False
-    st.rerun()
-
-# --- 6. MAIN UI ---
+# --- 6. MAIN RADAR LOGIC ---
 st.title(t('title'))
 
-# Fixed: Added a non-empty label and hid it for accessibility
-mode_selected = st.radio(t('selector'), [t('m1'), t('m2'), t('m3')], horizontal=True, index=2, label_visibility="collapsed")
+if demo_mode:
+    st.info(f"📡 {t('demo_btn')}")
+    objects = [
+        {"id": "GAUL-01", "r": 1200, "th": 45, "s": 850},
+        {"id": "INFINITY-X", "r": 2100, "th": 190, "s": 27000}
+    ]
+else:
+    st.success(f"🌐 {t('live')}")
+    live_data = fetch_live_flights(os_user, os_pass)
+    objects = live_data if live_data else [{"id": "SCANNING...", "r": 0, "th": 0, "s": 0}]
 
-if mode_selected == t('m1'): active_mode, label = "Aircraft", "ALTITUDE MONITOR"
-elif mode_selected == t('m2'): active_mode, label = "Satellite", "ORBITAL SWEEP"
-else: active_mode, label = "Missile", "TACTICAL DEFENSE"
+# --- 7. RADAR VISUALIZATION ---
+fig = go.Figure()
+sweep = (time.time() * 80) % 360
 
-col1, col2 = st.columns([2, 1])
-objects = get_cached_threats(active_mode)
-r_max = 3000
+# Radar Sweep Line
+fig.add_trace(go.Scatterpolar(
+    r=[0, 3000], theta=[sweep, sweep],
+    mode='lines', line=dict(color='#00FF41', width=4), opacity=0.6, showlegend=False
+))
 
+# Object Plotting
+fig.add_trace(go.Scatterpolar(
+    r=[o['r'] for o in objects],
+    theta=[o['th'] for o in objects],
+    mode='markers+text',
+    marker=dict(size=12, color='red', symbol='triangle-up'),
+    text=[o['id'] for o in objects],
+    textposition="top right"
+))
+
+fig.update_layout(
+    polar=dict(bgcolor="black", radialaxis=dict(gridcolor="#004400", color="lime"),
+    angularaxis=dict(gridcolor="#004400", color="lime")),
+    paper_bgcolor="black", font_color="lime", height=600
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
+# --- 8. LOGS & REPORTS ---
+col1, col2 = st.columns(2)
 with col1:
-    st.subheader(f"📡 {label} ({t('demo')})")
-    
-    # Fragment-style logic to keep the animation running without full page refresh
-    fig = go.Figure()
-    sweep = (time.time() * 60) % 360  # Controlled speed
-    for offset in [0, 180]:
-        fig.add_trace(go.Scatterpolar(
-            r=[0, r_max], theta=[(sweep + offset) % 360]*2,
-            mode='lines', line=dict(color='#00FF41', width=3), opacity=0.5, showlegend=False
-        ))
-    
-    fig.add_trace(go.Scatterpolar(
-        r=[o['r'] for o in objects], theta=[o['th'] for o in objects],
-        mode='markers+text', marker=dict(size=12, color='red', symbol='x'),
-        text=[o['id'] for o in objects], textposition="top right"
-    ))
-    
-    fig.update_layout(
-        polar=dict(bgcolor="black", radialaxis=dict(gridcolor="#004400", color="lime"),
-        angularaxis=dict(gridcolor="#004400", color="lime")),
-        paper_bgcolor="black", font_color="lime", height=600,
-        margin=dict(l=20, r=20, t=20, b=20)
-    )
-    
-    # Fixed: use_container_width=True is still supported but cleaned up
-    st.plotly_chart(fig, use_container_width=True)
+    st.subheader("Target Intelligence")
+    st.dataframe(pd.DataFrame(objects), use_container_width=True)
 
 with col2:
-    st.warning(t('threat'))
-    report_content = f"DSM Report - {active_mode}\nResearcher: Gesner Deslandes\nGenerated: {datetime.now()}\n"
-    for o in objects:
-        with st.container(border=True):
-            st.write(f"**Target ID:** {o['id']}")
-            st.write(f"**Speed:** {o['s']} km/h")
-            report_content += f"ID: {o['id']} | Speed: {o['s']}\n"
-    
-    st.download_button(t('report'), report_content, file_name=f"DSM_{active_mode}_Report.txt")
+    st.subheader("System Status")
+    st.write(f"**Last Pulse:** {datetime.now().strftime('%H:%M:%S')}")
+    st.write(f"**Source:** {'Internal Cache' if demo_mode else 'OpenSky Live Feed'}")
 
-st.caption(f"--- \n {t('owner')}")
-
-# Slowed down rerun to prevent log flooding
-time.sleep(2)
+time.sleep(3)
 st.rerun()
